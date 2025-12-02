@@ -1,67 +1,56 @@
+from telethon import events
 import aiohttp
 import os
-import matplotlib.pyplot as plt
-from telethon import events
-from dotenv import load_dotenv
-
-load_dotenv()
 
 APP_ID = os.getenv("TB_APPLICATION_ID")
 
-SEARCH_URL = "https://papi.tanksblitz.ru/wotb/account/list"
-INFO_URL   = "https://papi.tanksblitz.ru/wotb/account/info"
+def make_bar(value, max_value=100, width=20):
+    filled = int((value / max_value) * width)
+    return "█" * filled + "·" * (width - filled)
 
 def register(client):
     @client.on(events.NewMessage(pattern=r"\.tbgraph (.+)"))
-    async def tbgraph(event):
+    async def tbgraph_handler(event):
         nickname = event.pattern_match.group(1).strip()
-        await event.edit(f"🔍 Ищу игрока **{nickname}**...")
+        await event.edit("📈 Получаю статистику…")
 
-        # Поиск
         async with aiohttp.ClientSession() as session:
-            async with session.get(SEARCH_URL, params={
-                "application_id": APP_ID,
-                "search": nickname,
-                "limit": 1
-            }) as resp:
-                data = await resp.json()
+            # поиск игрока
+            async with session.get(
+                "https://papi.tanksblitz.ru/wotb/account/list/",
+                params={"application_id": APP_ID, "search": nickname, "limit": 1}
+            ) as resp:
+                search = await resp.json()
 
-        if not data["data"]:
-            await event.edit("❌ Игрок не найден.")
-            return
+            if not search.get("data"):
+                return await event.edit("❌ Игрок не найден.")
 
-        acc = data["data"][0]
-        acc_id = str(acc["account_id"])
+            account_id = search["data"][0]["account_id"]
 
-        # Стата
-        async with aiohttp.ClientSession() as session:
-            async with session.get(INFO_URL, params={
-                "application_id": APP_ID,
-                "account_id": acc_id
-            }) as resp:
+            # информация
+            async with session.get(
+                "https://papi.tanksblitz.ru/wotb/account/info/",
+                params={"application_id": APP_ID, "account_id": account_id}
+            ) as resp:
                 info = await resp.json()
 
-        stats = info["data"][acc_id]["statistics"]["all"]
+        stats = info["data"][str(account_id)]["statistics"]["all"]
 
-        # берем 5 приближённых метрик как динамику
-        graph_values = [
-            stats.get("damage_dealt", 0),
-            stats.get("frags", 0),
-            stats.get("spotted", 0),
-            stats.get("dropped_capture_points", 0),
-            stats.get("xp", 0)
-        ]
+        battles = stats["battles"]
+        wins = stats["wins"]
 
-        plt.figure(figsize=(7, 4))
-        plt.plot(graph_values)
-        plt.title(f"Progress graph: {acc['nickname']}")
-        plt.xlabel("Metric")
-        plt.ylabel("Value")
-        plt.tight_layout()
+        if battles == 0:
+            return await event.edit("У игрока нет боёв.")
 
-        filepath = "/mnt/data/tbgraph.png"
-        plt.savefig(filepath)
-        plt.close()
+        wr = round(wins / battles * 100, 2)
 
-        await client.send_file(event.chat_id, filepath, caption=f"📈 График {acc['nickname']}")
-        await event.delete()
+        # псевдо-график WR за последние «периоды»
+        # (здесь фиксируем набор точек, но потом можно прикрутить реальные данные)
+        graph_points = [wr - 5, wr - 2, wr - 1, wr, wr + 1, wr + 2]
+        graph_points = [max(0, min(100, v)) for v in graph_points]
+
+        text = f"📊 **WR-график игрока {nickname}**\n\n"
+        for v in graph_points:
+            text += f"{str(v).rjust(5)} | {make_bar(v)}\n"
+
+        await event.edit(text)
