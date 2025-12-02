@@ -1,0 +1,70 @@
+# --- Python ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pdb
+*.egg-info/
+*.egg
+dist/
+build/
+.venv/
+venv/
+env/
+
+# --- Telethon session files ---
+*.session
+*.session-journal
+
+# --- Environment variables ---
+.env
+.env.*
+
+# --- Logs ---
+*.log
+logs/
+log.txt
+
+# --- Cache ---
+.cache/
+*.cache
+.cache/*
+pip-wheel-metadata/
+*.sqlite3
+
+# --- IDE ---
+# PyCharm
+.idea/
+# VSCode
+.vscode/
+# Sublime
+*.sublime-workspace
+*.sublime-project
+
+# --- OS files ---
+.DS_Store
+Thumbs.db
+
+# --- Graphs / temp exports ---
+*.png
+*.jpg
+*.jpeg
+*.svg
+
+# --- Optional extras ---
+# mypy / type checkers
+.mypy_cache/
+.pytype/
+.dmypy.json
+
+# pytest
+.pytest_cache/
+
+# jupyter
+.ipynb_checkpoints/
+
+# coverage
+htmlcov/
+.coverage
+.coverage.*
+
